@@ -26,6 +26,7 @@ let strokes;
 let aiming = false;
 let aimEnd = null;
 let sunk = false;
+let frame = 0;
 
 function loadCourse(i) {
   courseIdx = i;
@@ -37,6 +38,7 @@ function loadCourse(i) {
   aiming = false;
   aimEnd = null;
   sunk = false;
+  frame = 0;
   messageEl.textContent = '';
   nextBtn.hidden = true;
   updateHud();
@@ -55,6 +57,21 @@ function outerWalls() {
 function allWalls() {
   return outerWalls().concat(course.walls);
 }
+
+function moverRect(m, fr) {
+  const [x, y, w, h] = m.rect;
+  const phase = m.phase || 0;
+  const off = (m.range / 2) * (1 - Math.cos(2 * Math.PI * (fr / m.period + phase)));
+  return m.axis === 'x' ? [x + off, y, w, h] : [x, y + off, w, h];
+}
+
+function moverVelocity(m, fr) {
+  const phase = m.phase || 0;
+  const v = (m.range * Math.PI / m.period) * Math.sin(2 * Math.PI * (fr / m.period + phase));
+  return m.axis === 'x' ? [v, 0] : [0, v];
+}
+
+function courseMovers() { return course.movers || []; }
 
 function speed() { return Math.hypot(ball.vx, ball.vy); }
 function isMoving() { return speed() > MIN_SPEED; }
@@ -163,7 +180,7 @@ function inAnyRect(x, y, rects) {
   return false;
 }
 
-function collideCircleRect(c, rect) {
+function collideCircleRect(c, rect, mv) {
   const [rx, ry, rw, rh] = rect;
   const cx = clamp(c.x, rx, rx + rw);
   const cy = clamp(c.y, ry, ry + rh);
@@ -183,9 +200,17 @@ function collideCircleRect(c, rect) {
     c.vx *= 0.8;
     c.vy *= 0.8;
   }
+  if (mv) {
+    const md = mv[0] * nx + mv[1] * ny;
+    if (md > 0) {
+      c.vx += md * nx;
+      c.vy += md * ny;
+    }
+  }
 }
 
 function update() {
+  frame++;
   if (sunk) return;
 
   ball.x += ball.vx;
@@ -197,6 +222,9 @@ function update() {
   ball.vy *= f;
 
   for (const w of allWalls()) collideCircleRect(ball, w);
+  for (const m of courseMovers()) {
+    collideCircleRect(ball, moverRect(m, frame), moverVelocity(m, frame));
+  }
 
   const [hx, hy] = course.hole;
   if (Math.hypot(ball.x - hx, ball.y - hy) < HOLE_RADIUS && speed() < SINK_SPEED) {
@@ -264,6 +292,18 @@ function drawWalls() {
   ctx.lineWidth = 1;
 }
 
+function drawMovers() {
+  ctx.fillStyle = '#c14242';
+  ctx.strokeStyle = '#7a2222';
+  ctx.lineWidth = 2;
+  for (const m of courseMovers()) {
+    const [x, y, w, h] = moverRect(m, frame);
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  }
+  ctx.lineWidth = 1;
+}
+
 function draw() {
   ctx.fillStyle = '#3aa647';
   ctx.fillRect(0, 0, course.width, course.height);
@@ -284,6 +324,7 @@ function draw() {
   ctx.fill();
 
   drawWalls();
+  drawMovers();
 
   if (!sunk) {
     ctx.fillStyle = '#fff';
