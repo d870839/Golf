@@ -6,12 +6,20 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="hud">
+    <div class="hud-top">
+      <span>Hole <strong id="hole-num">1/1</strong></span>
+      <span>Par: <strong id="par">0</strong></span>
       <span>Strokes: <strong id="strokes">0</strong></span>
-      <span id="message"></span>
-      <span class="hint">Click &amp; drag the ball to aim. Release to shoot. R to reset.</span>
+      <span>Total: <strong id="total">0</strong></span>
+      <span class="hint">Drag the ball to aim &middot; R reset hole &middot; N next</span>
     </div>
     <canvas id="game" width="800" height="500"></canvas>
+    <div class="hud-bottom">
+      <span id="message"></span>
+      <button id="next-btn" type="button" hidden>Next &rarr;</button>
+    </div>
+    <table id="scorecard"><tbody id="scorecard-body"></tbody></table>
+    <script src="courses.js"></script>
     <script src="game.js"></script>
   </body>
 </html>

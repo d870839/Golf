@@ -7,24 +7,57 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
+  padding: 20px;
   background: #1a1a1a;
   color: #eee;
   font: 14px/1.4 system-ui, sans-serif;
 }
 
-.hud {
+.hud-top, .hud-bottom {
   display: flex;
-  gap: 24px;
+  gap: 20px;
   align-items: center;
 }
 
-.hud .hint { color: #888; }
-.hud strong { color: #fff; }
+.hud-top .hint { color: #888; margin-left: auto; }
+.hud-top strong, .hud-bottom strong { color: #fff; }
+.hud-bottom { min-height: 30px; }
+#message { color: #ffd66e; }
+
+#next-btn {
+  background: #ffd66e;
+  color: #1a1a1a;
+  border: 0;
+  padding: 6px 14px;
+  font: inherit;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#next-btn:hover { background: #ffe28f; }
 
 #game {
   background: #000;
   border: 2px solid #333;
   cursor: crosshair;
   image-rendering: pixelated;
+  max-width: 100%;
+  height: auto;
 }
+
+#scorecard {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+#scorecard th, #scorecard td {
+  border: 1px solid #333;
+  padding: 4px 10px;
+  text-align: center;
+  min-width: 32px;
+}
+#scorecard th { background: #222; color: #aaa; font-weight: 500; }
+#scorecard td:first-child { color: #888; text-align: left; }
+#scorecard td.current { background: #2a2a2a; color: #ffd66e; }
+#scorecard td.total { background: #222; font-weight: 600; }
