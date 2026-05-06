@@ -25,17 +25,19 @@ body {
 .hud-bottom { min-height: 30px; }
 #message { color: #ffd66e; }
 
-#next-btn {
-  background: #ffd66e;
-  color: #1a1a1a;
+#next-btn, #reset-btn {
   border: 0;
-  padding: 6px 14px;
+  padding: 8px 16px;
   font: inherit;
   font-weight: 600;
   border-radius: 4px;
   cursor: pointer;
+  touch-action: manipulation;
 }
+#next-btn { background: #ffd66e; color: #1a1a1a; }
 #next-btn:hover { background: #ffe28f; }
+#reset-btn { background: #2a2a2a; color: #ddd; border: 1px solid #444; font-weight: 500; }
+#reset-btn:hover { background: #333; }
 
 #game {
   background: #000;
@@ -44,6 +46,7 @@ body {
   image-rendering: pixelated;
   max-width: 100%;
   height: auto;
+  touch-action: none;
 }
 
 #scorecard {
@@ -93,3 +96,80 @@ body {
   width: 160px;
 }
 .controls #seed-display { color: #888; font-variant-numeric: tabular-nums; }
+
+#leaderboard {
+  width: 100%;
+  max-width: 800px;
+  margin-top: 10px;
+  padding: 14px 16px;
+  background: #232323;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+}
+.leaderboard-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.leaderboard-head h3 { margin: 0; color: #ffd66e; font-size: 16px; font-weight: 600; }
+.leaderboard-head h3 span { color: #888; font-weight: 400; margin-left: 6px; }
+#refresh-btn {
+  background: transparent;
+  color: #ddd;
+  border: 1px solid #444;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#refresh-btn:hover { background: #2a2a2a; }
+#lb-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+#lb-table td { padding: 4px 8px; border-bottom: 1px solid #333; }
+#lb-table tr:last-child td { border-bottom: 0; }
+#lb-table .rank { color: #888; width: 32px; }
+#lb-table .name { color: #fff; font-weight: 500; }
+#lb-table .score { color: #ffd66e; text-align: right; font-weight: 600; }
+.lb-msg { color: #888; padding: 6px 0; }
+.lb-msg.warning { color: #f08c8c; }
+.submit-panel {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #3a3a3a;
+  flex-wrap: wrap;
+}
+.submit-panel input {
+  background: #1a1a1a;
+  color: #ddd;
+  border: 1px solid #444;
+  padding: 6px 10px;
+  font: inherit;
+  border-radius: 4px;
+  flex: 1;
+  min-width: 140px;
+}
+#submit-btn {
+  background: #ffd66e;
+  color: #1a1a1a;
+  border: 0;
+  padding: 6px 14px;
+  font: inherit;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#submit-btn:disabled { background: #555; color: #999; cursor: not-allowed; }
+#submit-status { color: #888; font-size: 12px; flex-basis: 100%; }
+
+@media (max-width: 640px) {
+  body { padding: 10px; gap: 8px; }
+  .hud-top, .hud-bottom, .controls { flex-wrap: wrap; gap: 10px 14px; }
+  .hud-top .hint { display: none; }
+  .controls input { flex: 1; min-width: 100px; }
+  #scorecard th, #scorecard td { padding: 4px 6px; min-width: 24px; font-size: 12px; }
+  #next-btn, #reset-btn, .controls button { padding: 10px 14px; }
+}

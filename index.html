@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Minigolf</title>
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -11,22 +12,40 @@
       <span>Par: <strong id="par">0</strong></span>
       <span>Strokes: <strong id="strokes">0</strong></span>
       <span>Total: <strong id="total">0</strong></span>
-      <span class="hint">Drag the ball to aim &middot; R reset hole &middot; N next</span>
+      <span class="hint">Drag the ball to aim and release to shoot</span>
     </div>
     <canvas id="game" width="800" height="500"></canvas>
     <div class="hud-bottom">
       <span id="message"></span>
+      <button id="reset-btn" type="button">Reset Hole</button>
       <button id="next-btn" type="button" hidden>Next &rarr;</button>
     </div>
     <table id="scorecard"><tbody id="scorecard-body"></tbody></table>
     <div class="controls">
       <button id="designed-btn" type="button" class="active">Designed</button>
       <button id="random-btn" type="button">Random</button>
+      <button id="daily-btn" type="button">Daily</button>
       <input id="seed-input" type="text" placeholder="seed (optional)" maxlength="20" />
       <span id="seed-display"></span>
     </div>
+    <div id="leaderboard" hidden>
+      <div class="leaderboard-head">
+        <h3>Daily Leaderboard <span id="lb-date"></span></h3>
+        <button id="refresh-btn" type="button">Refresh</button>
+      </div>
+      <table id="lb-table"><tbody id="lb-body"></tbody></table>
+      <div id="lb-empty" class="lb-msg" hidden>No scores yet today. Be first!</div>
+      <div id="lb-warning" class="lb-msg warning" hidden></div>
+      <div id="submit-panel" class="submit-panel" hidden>
+        <input id="player-name" type="text" placeholder="Your name" maxlength="20" />
+        <button id="submit-btn" type="button">Submit Score</button>
+        <span id="submit-status"></span>
+      </div>
+    </div>
+    <script src="firebase-config.js"></script>
     <script src="courses.js"></script>
     <script src="procedural.js"></script>
     <script src="game.js"></script>
+    <script type="module" src="daily.js"></script>
   </body>
 </html>

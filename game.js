@@ -9,10 +9,13 @@ const nextBtn = document.getElementById('next-btn');
 const scorecardBody = document.getElementById('scorecard-body');
 const designedBtn = document.getElementById('designed-btn');
 const randomBtn = document.getElementById('random-btn');
+const dailyBtn = document.getElementById('daily-btn');
 const seedInput = document.getElementById('seed-input');
 const seedDisplay = document.getElementById('seed-display');
+const resetBtn = document.getElementById('reset-btn');
 
 const DESIGNED_COURSES = COURSES;
+let currentMode = 'designed';
 
 const HOLE_RADIUS = 14;
 const BALL_RADIUS = 8;
@@ -125,25 +128,25 @@ function renderScorecard() {
   scorecardBody.innerHTML = head + par + you;
 }
 
-function mouse(e) {
+function getPos(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   const sx = canvas.width / rect.width;
   const sy = canvas.height / rect.height;
-  return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+  return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
 }
 
-canvas.addEventListener('mousedown', (e) => {
-  if (sunk || isMoving()) return;
-  const m = mouse(e);
-  if (Math.hypot(m.x - ball.x, m.y - ball.y) < 40) {
+function startAim(pos) {
+  if (sunk || isMoving()) return false;
+  if (Math.hypot(pos.x - ball.x, pos.y - ball.y) < 60) {
     aiming = true;
-    aimEnd = m;
+    aimEnd = pos;
+    return true;
   }
-});
-canvas.addEventListener('mousemove', (e) => {
-  if (aiming) aimEnd = mouse(e);
-});
-canvas.addEventListener('mouseup', () => {
+  return false;
+}
+function moveAim(pos) { if (aiming) aimEnd = pos; }
+function cancelAim() { aiming = false; aimEnd = null; }
+function endAim() {
   if (!aiming) return;
   aiming = false;
   const dx = ball.x - aimEnd.x;
@@ -156,17 +159,43 @@ canvas.addEventListener('mouseup', () => {
   ball.vy = Math.sin(angle) * power;
   strokes++;
   updateHud();
-});
+}
+
+canvas.addEventListener('mousedown', (e) => startAim(getPos(e.clientX, e.clientY)));
+canvas.addEventListener('mousemove', (e) => moveAim(getPos(e.clientX, e.clientY)));
+canvas.addEventListener('mouseup', endAim);
+canvas.addEventListener('mouseleave', cancelAim);
+
+canvas.addEventListener('touchstart', (e) => {
+  const t = e.touches[0];
+  if (!t) return;
+  if (startAim(getPos(t.clientX, t.clientY))) e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchmove', (e) => {
+  if (!aiming) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  if (t) moveAim(getPos(t.clientX, t.clientY));
+}, { passive: false });
+canvas.addEventListener('touchend', (e) => {
+  if (!aiming) return;
+  e.preventDefault();
+  endAim();
+}, { passive: false });
+canvas.addEventListener('touchcancel', cancelAim);
+
+function resetCurrentHole() {
+  scores[courseIdx] = undefined;
+  loadCourse(courseIdx);
+}
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'r' || e.key === 'R') {
-    scores[courseIdx] = undefined;
-    loadCourse(courseIdx);
-  } else if ((e.key === 'n' || e.key === 'N') && sunk) {
-    advance();
-  }
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (e.key === 'r' || e.key === 'R') resetCurrentHole();
+  else if ((e.key === 'n' || e.key === 'N') && sunk) advance();
 });
 nextBtn.addEventListener('click', advance);
+resetBtn.addEventListener('click', resetCurrentHole);
 
 function loadCourseSet(courses, label, activeBtn) {
   window.COURSES = courses;
@@ -174,14 +203,19 @@ function loadCourseSet(courses, label, activeBtn) {
   seedDisplay.textContent = label || '';
   designedBtn.classList.toggle('active', activeBtn === designedBtn);
   randomBtn.classList.toggle('active', activeBtn === randomBtn);
+  dailyBtn.classList.toggle('active', activeBtn === dailyBtn);
   loadCourse(0);
 }
 
 designedBtn.addEventListener('click', () => {
+  currentMode = 'designed';
+  if (window.Daily) window.Daily.stop();
   loadCourseSet(DESIGNED_COURSES, '', designedBtn);
 });
 
 randomBtn.addEventListener('click', () => {
+  currentMode = 'random';
+  if (window.Daily) window.Daily.stop();
   const raw = seedInput.value.trim();
   let seed;
   if (raw) {
@@ -192,6 +226,13 @@ randomBtn.addEventListener('click', () => {
   }
   const courses = Procedural.generateCourse(seed, 5);
   loadCourseSet(courses, `Seed: ${raw || seed}`, randomBtn);
+});
+
+dailyBtn.addEventListener('click', () => {
+  if (!window.Daily) return;
+  currentMode = 'daily';
+  loadCourseSet(window.Daily.getDailyCourses(), `Daily ${window.Daily.todayStr()}`, dailyBtn);
+  window.Daily.start();
 });
 
 function advance() {
@@ -297,6 +338,9 @@ function onSink() {
     messageEl.textContent = `Course complete — ${total} (${tdStr})`;
     nextBtn.textContent = 'Play again ↺';
     nextBtn.hidden = false;
+    if (currentMode === 'daily' && window.Daily) {
+      window.Daily.showSubmit(total);
+    }
   }
 }
 
