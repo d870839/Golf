@@ -61,3 +61,35 @@ body {
 #scorecard td:first-child { color: #888; text-align: left; }
 #scorecard td.current { background: #2a2a2a; color: #ffd66e; }
 #scorecard td.total { background: #222; font-weight: 600; }
+
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.controls button {
+  background: #2a2a2a;
+  color: #ddd;
+  border: 1px solid #444;
+  padding: 6px 14px;
+  font: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.controls button:hover { background: #333; }
+.controls button.active {
+  background: #ffd66e;
+  color: #1a1a1a;
+  border-color: #ffd66e;
+}
+.controls input {
+  background: #1a1a1a;
+  color: #ddd;
+  border: 1px solid #444;
+  padding: 6px 10px;
+  font: inherit;
+  border-radius: 4px;
+  width: 160px;
+}
+.controls #seed-display { color: #888; font-variant-numeric: tabular-nums; }

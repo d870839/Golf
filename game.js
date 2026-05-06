@@ -7,6 +7,12 @@ const parEl = document.getElementById('par');
 const messageEl = document.getElementById('message');
 const nextBtn = document.getElementById('next-btn');
 const scorecardBody = document.getElementById('scorecard-body');
+const designedBtn = document.getElementById('designed-btn');
+const randomBtn = document.getElementById('random-btn');
+const seedInput = document.getElementById('seed-input');
+const seedDisplay = document.getElementById('seed-display');
+
+const DESIGNED_COURSES = COURSES;
 
 const HOLE_RADIUS = 14;
 const BALL_RADIUS = 8;
@@ -161,6 +167,32 @@ document.addEventListener('keydown', (e) => {
   }
 });
 nextBtn.addEventListener('click', advance);
+
+function loadCourseSet(courses, label, activeBtn) {
+  window.COURSES = courses;
+  scores = new Array(courses.length);
+  seedDisplay.textContent = label || '';
+  designedBtn.classList.toggle('active', activeBtn === designedBtn);
+  randomBtn.classList.toggle('active', activeBtn === randomBtn);
+  loadCourse(0);
+}
+
+designedBtn.addEventListener('click', () => {
+  loadCourseSet(DESIGNED_COURSES, '', designedBtn);
+});
+
+randomBtn.addEventListener('click', () => {
+  const raw = seedInput.value.trim();
+  let seed;
+  if (raw) {
+    const n = parseInt(raw, 10);
+    seed = (Number.isFinite(n) && String(n) === raw) ? n : Procedural.hashString(raw);
+  } else {
+    seed = Math.floor(Math.random() * 1e9);
+  }
+  const courses = Procedural.generateCourse(seed, 5);
+  loadCourseSet(courses, `Seed: ${raw || seed}`, randomBtn);
+});
 
 function advance() {
   if (courseIdx + 1 < COURSES.length) {
