@@ -229,7 +229,10 @@ randomBtn.addEventListener('click', () => {
 });
 
 dailyBtn.addEventListener('click', () => {
-  if (!window.Daily) return;
+  if (!window.Daily) {
+    messageEl.textContent = 'Daily mode failed to load — check browser console (F12) for errors.';
+    return;
+  }
   currentMode = 'daily';
   loadCourseSet(window.Daily.getDailyCourses(), `Daily ${window.Daily.todayStr()}`, dailyBtn);
   window.Daily.start();
