@@ -29,6 +29,31 @@
              a[1] + a[3] + pad < b[1] || b[1] + b[3] + pad < a[1]);
   }
 
+  function losBlocked(ball, hole, walls, segments, ballR) {
+    const dx = hole[0] - ball[0], dy = hole[1] - ball[1];
+    const len = Math.hypot(dx, dy);
+    const steps = Math.max(20, Math.ceil(len / 5));
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const px = ball[0] + t * dx;
+      const py = ball[1] + t * dy;
+      for (const [wx, wy, ww, wh] of walls) {
+        const cx = Math.max(wx, Math.min(px, wx + ww));
+        const cy = Math.max(wy, Math.min(py, wy + wh));
+        if (Math.hypot(px - cx, py - cy) < ballR) return true;
+      }
+      for (const [x1, y1, x2, y2, thickness] of segments) {
+        const sdx = x2 - x1, sdy = y2 - y1;
+        const slen2 = sdx * sdx + sdy * sdy || 1;
+        let st = ((px - x1) * sdx + (py - y1) * sdy) / slen2;
+        st = Math.max(0, Math.min(1, st));
+        const sxx = x1 + st * sdx, syy = y1 + st * sdy;
+        if (Math.hypot(px - sxx, py - syy) < ballR + thickness / 2) return true;
+      }
+    }
+    return false;
+  }
+
   function pointInCorridor(p, ball, hole, width) {
     const dx = hole[0] - ball[0], dy = hole[1] - ball[1];
     const len2 = dx * dx + dy * dy;
@@ -131,7 +156,9 @@
       80 + rng() * (H - 160),
     ];
 
+    const BALL_R = 10;
     const walls = [];
+    const segments = [];
     const targetWalls = Math.min(4, 1 + Math.floor(difficulty + rng() * 2));
     for (let i = 0; i < targetWalls * 4 && walls.length < targetWalls; i++) {
       const vertical = rng() < 0.6;
@@ -146,10 +173,11 @@
       if (rectContainsPoint(r, hole, 30)) continue;
       let bad = false;
       for (const w of walls) if (rectsOverlap(r, w, 30)) { bad = true; break; }
-      if (!bad) walls.push(r);
+      if (bad) continue;
+      if (losBlocked(ball, hole, walls.concat([r]), segments, BALL_R)) continue;
+      walls.push(r);
     }
 
-    const segments = [];
     const targetSegments = rng() < 0.3 + difficulty * 0.5 ? 1 + Math.floor(rng() * 2) : 0;
     for (let i = 0; i < targetSegments * 6 && segments.length < targetSegments; i++) {
       const cx = 80 + rng() * (W - 160);
@@ -168,7 +196,9 @@
       if (Math.hypot(x2 - ball[0], y2 - ball[1]) < 50) continue;
       if (Math.hypot(x1 - hole[0], y1 - hole[1]) < 50) continue;
       if (Math.hypot(x2 - hole[0], y2 - hole[1]) < 50) continue;
-      segments.push([x1, y1, x2, y2, 16]);
+      const candidate = [x1, y1, x2, y2, 16];
+      if (losBlocked(ball, hole, walls, segments.concat([candidate]), BALL_R)) continue;
+      segments.push(candidate);
     }
 
     const sand = [];
