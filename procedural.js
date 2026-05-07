@@ -29,6 +29,79 @@
              a[1] + a[3] + pad < b[1] || b[1] + b[3] + pad < a[1]);
   }
 
+  function simulateShot(course, theta, power, maxFrames) {
+    const W = course.width, H = course.height, T = 20;
+    const walls = [
+      [0, 0, W, T], [0, H - T, W, T], [0, 0, T, H], [W - T, 0, T, H],
+      ...(course.walls || []),
+    ];
+    const segments = course.segments || [];
+    const sand = course.sand || [];
+    const hole = course.hole;
+    const BR = 10, HR = 14, SINK = 4.5, FR = 0.985, SFR = 0.88, MIN = 0.05;
+
+    let bx = course.ball[0], by = course.ball[1];
+    let bvx = Math.cos(theta) * power;
+    let bvy = Math.sin(theta) * power;
+
+    for (let f = 0; f < maxFrames; f++) {
+      bx += bvx; by += bvy;
+      let onSand = false;
+      for (const [sx, sy, sw, sh] of sand) {
+        if (bx >= sx && bx <= sx + sw && by >= sy && by <= sy + sh) { onSand = true; break; }
+      }
+      const fric = onSand ? SFR : FR;
+      bvx *= fric; bvy *= fric;
+      for (const [rx, ry, rw, rh] of walls) {
+        const cx = Math.max(rx, Math.min(bx, rx + rw));
+        const cy = Math.max(ry, Math.min(by, ry + rh));
+        const dx = bx - cx, dy = by - cy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < BR * BR) {
+          const d = Math.sqrt(d2) || 0.0001;
+          const nx = dx / d, ny = dy / d;
+          bx += nx * (BR - d); by += ny * (BR - d);
+          const dot = bvx * nx + bvy * ny;
+          if (dot < 0) { bvx -= 2 * dot * nx; bvy -= 2 * dot * ny; bvx *= 0.8; bvy *= 0.8; }
+        }
+      }
+      for (const [x1, y1, x2, y2, thickness] of segments) {
+        const r = BR + thickness / 2;
+        const sdx = x2 - x1, sdy = y2 - y1;
+        const len2 = sdx * sdx + sdy * sdy || 1;
+        let st = ((bx - x1) * sdx + (by - y1) * sdy) / len2;
+        st = Math.max(0, Math.min(1, st));
+        const px = x1 + st * sdx, py = y1 + st * sdy;
+        const ddx = bx - px, ddy = by - py;
+        const d2 = ddx * ddx + ddy * ddy;
+        if (d2 < r * r) {
+          const d = Math.sqrt(d2) || 0.0001;
+          const nx = ddx / d, ny = ddy / d;
+          bx += nx * (r - d); by += ny * (r - d);
+          const dot = bvx * nx + bvy * ny;
+          if (dot < 0) { bvx -= 2 * dot * nx; bvy -= 2 * dot * ny; bvx *= 0.8; bvy *= 0.8; }
+        }
+      }
+      const dhx = bx - hole[0], dhy = by - hole[1];
+      const sp2 = bvx * bvx + bvy * bvy;
+      if (dhx * dhx + dhy * dhy < HR * HR && sp2 < SINK * SINK) return true;
+      if (sp2 < MIN * MIN) return false;
+    }
+    return false;
+  }
+
+  function canHoleInOne(course) {
+    const angles = 90;
+    const powers = [6, 9, 12, 14];
+    for (let a = 0; a < angles; a++) {
+      const theta = (a / angles) * 2 * Math.PI;
+      for (const p of powers) {
+        if (simulateShot(course, p === 14 ? theta : theta + 0.01, p, 400)) return true;
+      }
+    }
+    return false;
+  }
+
   function losBlocked(ball, hole, walls, segments, ballR) {
     const dx = hole[0] - ball[0], dy = hole[1] - ball[1];
     const len = Math.hypot(dx, dy);
@@ -156,7 +229,6 @@
       80 + rng() * (H - 160),
     ];
 
-    const BALL_R = 10;
     const walls = [];
     const segments = [];
     const targetWalls = Math.min(4, 1 + Math.floor(difficulty + rng() * 2));
@@ -173,9 +245,7 @@
       if (rectContainsPoint(r, hole, 30)) continue;
       let bad = false;
       for (const w of walls) if (rectsOverlap(r, w, 30)) { bad = true; break; }
-      if (bad) continue;
-      if (losBlocked(ball, hole, walls.concat([r]), segments, BALL_R)) continue;
-      walls.push(r);
+      if (!bad) walls.push(r);
     }
 
     const targetSegments = rng() < 0.3 + difficulty * 0.5 ? 1 + Math.floor(rng() * 2) : 0;
@@ -196,9 +266,7 @@
       if (Math.hypot(x2 - ball[0], y2 - ball[1]) < 50) continue;
       if (Math.hypot(x1 - hole[0], y1 - hole[1]) < 50) continue;
       if (Math.hypot(x2 - hole[0], y2 - hole[1]) < 50) continue;
-      const candidate = [x1, y1, x2, y2, 16];
-      if (losBlocked(ball, hole, walls, segments.concat([candidate]), BALL_R)) continue;
-      segments.push(candidate);
+      segments.push([x1, y1, x2, y2, 16]);
     }
 
     const sand = [];
@@ -271,7 +339,11 @@
       let chosen = null;
       for (let attempt = 0; attempt < 40; attempt++) {
         const h = generateHole(rng, i + 1, difficulty);
-        if (isReachable(h)) { chosen = h; break; }
+        if (!isReachable(h)) continue;
+        // Cheap path: direct LOS means HIO is possible.
+        if (!losBlocked(h.ball, h.hole, h.walls, h.segments || [], 10)) { chosen = h; break; }
+        // Slow path: simulate bounce shots to confirm HIO exists.
+        if (canHoleInOne(h)) { chosen = h; break; }
       }
       if (!chosen) {
         chosen = {
