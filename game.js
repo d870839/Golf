@@ -57,6 +57,7 @@ function loadCourse(i) {
     x: course.ball[0], y: course.ball[1],
     r: BALL_RADIUS, vx: 0, vy: 0,
     faceIndex: Math.floor(Math.random() * FACES.length),
+    angle: 0,
   };
   strokes = 0;
   aiming = false;
@@ -332,6 +333,7 @@ function update() {
 
   ball.x += ball.vx;
   ball.y += ball.vy;
+  ball.angle += speed() / ball.r;
 
   const onSand = inAnyRect(ball.x, ball.y, course.sand);
   const f = onSand ? SAND_FRICTION : FRICTION;
@@ -466,12 +468,14 @@ function draw() {
     if (facesLoaded && ball.faceIndex >= 0 && ball.faceIndex < FACES.length) {
       const f = FACES[ball.faceIndex];
       ctx.save();
+      ctx.translate(ball.x, ball.y);
+      ctx.rotate(ball.angle);
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
       ctx.clip();
       ctx.drawImage(facesImg,
         f.cx - f.r, f.cy - f.r, f.r * 2, f.r * 2,
-        ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2);
+        -ball.r, -ball.r, ball.r * 2, ball.r * 2);
       ctx.restore();
     } else {
       ctx.fillStyle = '#fff';
