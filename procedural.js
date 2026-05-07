@@ -91,12 +91,13 @@
   }
 
   function canHoleInOne(course) {
+    const MAX_POWER = 180 * 0.08; // matches game.js MAX_DRAG * POWER_PER_PIXEL
     const angles = 90;
-    const powers = [6, 9, 12, 14];
+    const powers = [4, 7, 10, 13, MAX_POWER];
     for (let a = 0; a < angles; a++) {
       const theta = (a / angles) * 2 * Math.PI;
       for (const p of powers) {
-        if (simulateShot(course, p === 14 ? theta : theta + 0.01, p, 400)) return true;
+        if (simulateShot(course, theta, p, 400)) return true;
       }
     }
     return false;
