@@ -18,7 +18,18 @@ const DESIGNED_COURSES = COURSES;
 let currentMode = 'designed';
 
 const HOLE_RADIUS = 14;
-const BALL_RADIUS = 8;
+const BALL_RADIUS = 10;
+
+const FACES = [
+  { cx: 87, cy: 57, r: 50 },
+  { cx: 270, cy: 57, r: 50 },
+  { cx: 82, cy: 180, r: 50 },
+];
+const facesImg = new Image();
+let facesLoaded = false;
+facesImg.onload = () => { facesLoaded = true; };
+facesImg.onerror = () => { console.warn('faces.jpg failed to load'); };
+facesImg.src = 'faces.jpg';
 const WALL_THICKNESS = 20;
 const FRICTION = 0.985;
 const SAND_FRICTION = 0.88;
@@ -42,7 +53,11 @@ function loadCourse(i) {
   course = COURSES[i];
   canvas.width = course.width;
   canvas.height = course.height;
-  ball = { x: course.ball[0], y: course.ball[1], r: BALL_RADIUS, vx: 0, vy: 0 };
+  ball = {
+    x: course.ball[0], y: course.ball[1],
+    r: BALL_RADIUS, vx: 0, vy: 0,
+    faceIndex: Math.floor(Math.random() * FACES.length),
+  };
   strokes = 0;
   aiming = false;
   aimEnd = null;
@@ -81,6 +96,7 @@ function moverVelocity(m, fr) {
 }
 
 function courseMovers() { return course.movers || []; }
+function courseSegments() { return course.segments || []; }
 
 function speed() { return Math.hypot(ball.vx, ball.vy); }
 function isMoving() { return speed() > MIN_SPEED; }
@@ -256,6 +272,31 @@ function inAnyRect(x, y, rects) {
   return false;
 }
 
+function collideCircleSegment(c, seg) {
+  const [x1, y1, x2, y2, thickness] = seg;
+  const r = c.r + thickness / 2;
+  const dx = x2 - x1, dy = y2 - y1;
+  const len2 = dx * dx + dy * dy || 1;
+  let t = ((c.x - x1) * dx + (c.y - y1) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const px = x1 + t * dx;
+  const py = y1 + t * dy;
+  const ddx = c.x - px, ddy = c.y - py;
+  const d2 = ddx * ddx + ddy * ddy;
+  if (d2 >= r * r) return;
+  const d = Math.sqrt(d2) || 0.0001;
+  const nx = ddx / d, ny = ddy / d;
+  c.x += nx * (r - d);
+  c.y += ny * (r - d);
+  const dot = c.vx * nx + c.vy * ny;
+  if (dot < 0) {
+    c.vx -= 2 * dot * nx;
+    c.vy -= 2 * dot * ny;
+    c.vx *= 0.8;
+    c.vy *= 0.8;
+  }
+}
+
 function collideCircleRect(c, rect, mv) {
   const [rx, ry, rw, rh] = rect;
   const cx = clamp(c.x, rx, rx + rw);
@@ -298,6 +339,7 @@ function update() {
   ball.vy *= f;
 
   for (const w of allWalls()) collideCircleRect(ball, w);
+  for (const s of courseSegments()) collideCircleSegment(ball, s);
   for (const m of courseMovers()) {
     collideCircleRect(ball, moverRect(m, frame), moverVelocity(m, frame));
   }
@@ -371,6 +413,20 @@ function drawWalls() {
   ctx.lineWidth = 1;
 }
 
+function drawSegments() {
+  ctx.strokeStyle = '#5a3a1a';
+  ctx.lineCap = 'round';
+  for (const [x1, y1, x2, y2, t] of courseSegments()) {
+    ctx.lineWidth = t;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+  ctx.lineWidth = 1;
+}
+
 function drawMovers() {
   ctx.fillStyle = '#c14242';
   ctx.strokeStyle = '#7a2222';
@@ -403,15 +459,32 @@ function draw() {
   ctx.fill();
 
   drawWalls();
+  drawSegments();
   drawMovers();
 
   if (!sunk) {
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#aaa';
+    if (facesLoaded && ball.faceIndex >= 0 && ball.faceIndex < FACES.length) {
+      const f = FACES[ball.faceIndex];
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(facesImg,
+        f.cx - f.r, f.cy - f.r, f.r * 2, f.r * 2,
+        ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-    ctx.fill();
     ctx.stroke();
+    ctx.lineWidth = 1;
   }
 
   if (aiming && aimEnd && !isMoving() && !sunk) {

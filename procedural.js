@@ -29,6 +29,41 @@
              a[1] + a[3] + pad < b[1] || b[1] + b[3] + pad < a[1]);
   }
 
+  function pointInCorridor(p, ball, hole, width) {
+    const dx = hole[0] - ball[0], dy = hole[1] - ball[1];
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) return true;
+    const t = ((p[0] - ball[0]) * dx + (p[1] - ball[1]) * dy) / len2;
+    if (t < -0.05 || t > 1.05) return false;
+    const px = ball[0] + t * dx, py = ball[1] + t * dy;
+    return Math.hypot(p[0] - px, p[1] - py) < width;
+  }
+
+  function blockSegment(blocked, cell, r, cw, ch, seg) {
+    const [x1, y1, x2, y2, thickness] = seg;
+    const radius = thickness / 2 + r;
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    const steps = Math.max(2, Math.ceil(len / (cell * 0.5)));
+    for (let i = 0; i <= steps; i++) {
+      const fx = x1 + (dx * i) / steps;
+      const fy = y1 + (dy * i) / steps;
+      const c1 = Math.max(0, Math.floor((fx - radius) / cell));
+      const c2 = Math.min(cw, Math.ceil((fx + radius) / cell));
+      const r1 = Math.max(0, Math.floor((fy - radius) / cell));
+      const r2 = Math.min(ch, Math.ceil((fy + radius) / cell));
+      for (let cx = c1; cx < c2; cx++) {
+        for (let cy = r1; cy < r2; cy++) {
+          const ccx = cx * cell + cell / 2;
+          const ccy = cy * cell + cell / 2;
+          if (Math.hypot(ccx - fx, ccy - fy) <= radius) {
+            blocked[cy * cw + cx] = 1;
+          }
+        }
+      }
+    }
+  }
+
   function isReachable(course) {
     const cell = 10;
     const r = 10;
@@ -54,6 +89,9 @@
       for (let cx = x1; cx < x2; cx++) {
         for (let cy = y1; cy < y2; cy++) blocked[idx(cx, cy)] = 1;
       }
+    }
+    for (const seg of (course.segments || [])) {
+      blockSegment(blocked, cell, r, cw, ch, seg);
     }
 
     const sx = Math.floor(course.ball[0] / cell);
@@ -83,6 +121,7 @@
 
   function generateHole(rng, holeNum, difficulty) {
     const W = 800, H = 500;
+    const CORRIDOR = 150;
     const ball = [
       80 + rng() * 80,
       80 + rng() * (H - 160),
@@ -93,14 +132,16 @@
     ];
 
     const walls = [];
-    const targetWalls = Math.min(5, 1 + Math.floor(difficulty + rng() * 2));
-    for (let i = 0; i < targetWalls * 3 && walls.length < targetWalls; i++) {
+    const targetWalls = Math.min(4, 1 + Math.floor(difficulty + rng() * 2));
+    for (let i = 0; i < targetWalls * 4 && walls.length < targetWalls; i++) {
       const vertical = rng() < 0.6;
       const ww = vertical ? 20 : 60 + rng() * 200;
       const wh = vertical ? 60 + rng() * 220 : 20;
-      const wx = 180 + rng() * (W - 360 - ww);
+      const wx = 60 + rng() * (W - 120 - ww);
       const wy = 60 + rng() * (H - 120 - wh);
       const r = [wx, wy, ww, wh];
+      const center = [wx + ww / 2, wy + wh / 2];
+      if (!pointInCorridor(center, ball, hole, CORRIDOR)) continue;
       if (rectContainsPoint(r, ball, 30)) continue;
       if (rectContainsPoint(r, hole, 30)) continue;
       let bad = false;
@@ -108,14 +149,38 @@
       if (!bad) walls.push(r);
     }
 
+    const segments = [];
+    const targetSegments = rng() < 0.3 + difficulty * 0.5 ? 1 + Math.floor(rng() * 2) : 0;
+    for (let i = 0; i < targetSegments * 6 && segments.length < targetSegments; i++) {
+      const cx = 80 + rng() * (W - 160);
+      const cy = 80 + rng() * (H - 160);
+      const angle = rng() * Math.PI;
+      const length = 80 + rng() * 180;
+      const half = length / 2;
+      const dx = Math.cos(angle) * half;
+      const dy = Math.sin(angle) * half;
+      const x1 = cx - dx, y1 = cy - dy;
+      const x2 = cx + dx, y2 = cy + dy;
+      if (!pointInCorridor([cx, cy], ball, hole, CORRIDOR)) continue;
+      if (Math.min(x1, x2) < 30 || Math.max(x1, x2) > W - 30) continue;
+      if (Math.min(y1, y2) < 30 || Math.max(y1, y2) > H - 30) continue;
+      if (Math.hypot(x1 - ball[0], y1 - ball[1]) < 50) continue;
+      if (Math.hypot(x2 - ball[0], y2 - ball[1]) < 50) continue;
+      if (Math.hypot(x1 - hole[0], y1 - hole[1]) < 50) continue;
+      if (Math.hypot(x2 - hole[0], y2 - hole[1]) < 50) continue;
+      segments.push([x1, y1, x2, y2, 16]);
+    }
+
     const sand = [];
     const targetSand = Math.floor(rng() * (difficulty + 1));
-    for (let i = 0; i < targetSand * 3 && sand.length < targetSand; i++) {
+    for (let i = 0; i < targetSand * 4 && sand.length < targetSand; i++) {
       const sw = 60 + rng() * 80;
       const sh = 50 + rng() * 60;
-      const sx = 100 + rng() * (W - 200 - sw);
+      const sx = 60 + rng() * (W - 120 - sw);
       const sy = 60 + rng() * (H - 120 - sh);
       const r = [sx, sy, sw, sh];
+      const center = [sx + sw / 2, sy + sh / 2];
+      if (!pointInCorridor(center, ball, hole, CORRIDOR)) continue;
       if (rectContainsPoint(r, ball, 20)) continue;
       if (rectContainsPoint(r, hole, 20)) continue;
       sand.push(r);
@@ -124,7 +189,7 @@
     const movers = [];
     const wantMover = holeNum >= 2 && rng() < 0.4 + difficulty * 0.15;
     if (wantMover) {
-      for (let attempt = 0; attempt < 10 && movers.length === 0; attempt++) {
+      for (let attempt = 0; attempt < 12 && movers.length === 0; attempt++) {
         const vertical = rng() < 0.5;
         const length = 60 + rng() * 80;
         const range = 120 + rng() * 200;
@@ -132,9 +197,14 @@
         const mw = vertical ? 20 : length;
         const mh = vertical ? length : 20;
         const axis = vertical ? 'y' : 'x';
-        const mx = 240 + rng() * (W - 480 - mw);
+        const mx = 60 + rng() * (W - 120 - mw - (axis === 'x' ? range : 0));
         const my = 60 + rng() * (H - 120 - mh - (axis === 'y' ? range : 0));
         const seed = [mx, my, mw, mh];
+        const midCenter = [
+          mx + mw / 2 + (axis === 'x' ? range / 2 : 0),
+          my + mh / 2 + (axis === 'y' ? range / 2 : 0),
+        ];
+        if (!pointInCorridor(midCenter, ball, hole, CORRIDOR + 40)) continue;
         if (rectContainsPoint(seed, ball, 30)) continue;
         if (rectContainsPoint(seed, hole, 30)) continue;
         let bad = false;
@@ -145,7 +215,7 @@
     }
 
     const dist = Math.hypot(hole[0] - ball[0], hole[1] - ball[1]);
-    const obstacleScore = walls.length * 0.7 + sand.length * 0.4 + movers.length * 1.2;
+    const obstacleScore = walls.length * 0.7 + sand.length * 0.4 + movers.length * 1.2 + segments.length * 0.6;
     const par = Math.max(2, Math.min(6, Math.round(dist / 280 + obstacleScore + 1)));
 
     return {
@@ -157,6 +227,7 @@
       hole,
       walls,
       sand,
+      segments,
       movers,
     };
   }
@@ -177,7 +248,7 @@
           name: `Random #${i + 1}`,
           par: 2, width: 800, height: 500,
           ball: [100, 250], hole: [700, 250],
-          walls: [], sand: [], movers: [],
+          walls: [], sand: [], segments: [], movers: [],
         };
       }
       holes.push(chosen);

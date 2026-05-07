@@ -70,6 +70,20 @@ window.COURSES = [
     ],
   },
   {
+    name: "Slants",
+    par: 4,
+    width: 800,
+    height: 500,
+    ball: [80, 250],
+    hole: [720, 250],
+    walls: [],
+    sand: [],
+    segments: [
+      [220, 80, 380, 240, 16],
+      [600, 260, 440, 420, 16],
+    ],
+  },
+  {
     name: "The Gauntlet",
     par: 5,
     width: 800,
