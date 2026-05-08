@@ -91,12 +91,26 @@
   }
 
   function canHoleInOne(course) {
-    const MAX_POWER = 180 * 0.08; // matches game.js MAX_DRAG * POWER_PER_PIXEL
+    const MAX_DRAG = 180;
+    const POWER_PER_PIXEL = 0.08;
+    const MAX_POWER = MAX_DRAG * POWER_PER_PIXEL;
+    const W = course.width, H = course.height;
+    const bx = course.ball[0], by = course.ball[1];
     const angles = 90;
     const powers = [4, 7, 10, 13, MAX_POWER];
     for (let a = 0; a < angles; a++) {
       const theta = (a / angles) * 2 * Math.PI;
+      // Player drags opposite to shot direction. Drag must stay inside canvas.
+      const ddx = -Math.cos(theta), ddy = -Math.sin(theta);
+      let edgeDist = Infinity;
+      if (ddx > 0.0001) edgeDist = Math.min(edgeDist, (W - bx) / ddx);
+      else if (ddx < -0.0001) edgeDist = Math.min(edgeDist, -bx / ddx);
+      if (ddy > 0.0001) edgeDist = Math.min(edgeDist, (H - by) / ddy);
+      else if (ddy < -0.0001) edgeDist = Math.min(edgeDist, -by / ddy);
+      const effMaxDrag = Math.min(MAX_DRAG, edgeDist);
+      const effMaxPower = effMaxDrag * POWER_PER_PIXEL;
       for (const p of powers) {
+        if (p > effMaxPower) continue;
         if (simulateShot(course, theta, p, 400)) return true;
       }
     }
@@ -338,19 +352,16 @@
     for (let i = 0; i < count; i++) {
       const difficulty = i / Math.max(1, count - 1);
       let chosen = null;
-      for (let attempt = 0; attempt < 40; attempt++) {
+      for (let attempt = 0; attempt < 80; attempt++) {
         const h = generateHole(rng, i + 1, difficulty);
         if (!isReachable(h)) continue;
-        // Cheap path: direct LOS means HIO is possible.
-        if (!losBlocked(h.ball, h.hole, h.walls, h.segments || [], 10)) { chosen = h; break; }
-        // Slow path: simulate bounce shots to confirm HIO exists.
         if (canHoleInOne(h)) { chosen = h; break; }
       }
       if (!chosen) {
         chosen = {
           name: `Random #${i + 1}`,
           par: 2, width: 800, height: 500,
-          ball: [100, 250], hole: [700, 250],
+          ball: [400, 250], hole: [550, 250],
           walls: [], sand: [], segments: [], movers: [],
         };
       }
